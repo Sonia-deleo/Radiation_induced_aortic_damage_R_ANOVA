@@ -1,0 +1,717 @@
+---
+title: "Effect of Radiation and Diet on Aortic damage "
+author: "Sonia De Leo"
+date: "20Feb2024"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    autoCollapseToc: false
+    collapsed: false
+    number_sections: true
+    smooth_scroll: true
+    theme: journal
+    highlight: kate
+    df_print: paged
+    code_folding: show
+header-includes:
+  - \usepackage{booktabs}
+  - \usepackage{longtable}
+  - \usepackage{array}
+  - \usepackage{multirow}
+  - \usepackage{amsthm}
+  - \usepackage{amsmath}
+  - \usepackage{amsfonts}
+  - \usepackage{amscd}
+  - \usepackage{amssymb}
+---
+```{r, echo=FALSE}
+#CONTROL + SHIFT + k para ve el html
+#toc. tabla de contenido con tres niveles
+#toc_float: presente en todo el documento? 
+#collapsed: solo en el nivel principal de cada documento en cada hoja.
+#thema: journal
+#highlight como muestra el código que aparezca en el documento. 
+#df_print: cómo puestra lso data frames
+#code_folding puede hacer click para ver lineas de codigo.
+#ctrl alt i: aparece para incluir código
+```
+# **Description of the Dataset and Experiment**
+
+## **Source of the Data & Credits**
+<div style='text-align: justify;'>
+The following dataset was obtained from 
+'Análisis de la Varianza: Carrera de Especialización en Estadísticas para Ciencias de la Salud (CEECS).
+Universidad de Buenos Aires. Instituto de Cálculo'. 
+</div>
+## **Objectives**
+<div style='text-align: justify;'> 
+Ionizing radiation used with therapeutic objectives produces secondary effects in the vascular system. It is suspected that radiation damage effects can be also potenciated by hypercholesterolemia. 
+
+The objective of the experiment is to study the effects of radiation and high cholesterol diets on endothelial damage.
+
+## **Experimental Design and Statistical Approach**
+<div style='text-align: justify;'>
+40 mice were exposed to radiation (0 Gy, 4 Gy, 8 Gy and 12 Gy), and standard or high-fat diets. Mice were divided in 8 groups of equal size and each group was assigned a combination of radiation intensity and diet. 
+Mice were sacrificed and aortic lesion was assessed from two histological samples and lession area was meassured in µm^2. 
+More information about this type of experiments can be found in  Trible, et al. [1]. 
+
+In the present analysis, Mixed model ANOVA is used to obtain statistical conclusions about the effect of Radiation and Diet on aortic Area. Multiple comparisons of the different treatment groups and visualizations of results are showed. 
+</div>
+
+[1]:'Tribble DL, Barcellos-Hoff MH, Chu BM, Gong EL. Ionizing radiation accelerates aortic lesion formation in fat-fed mice via SOD-inhibitable processes. Arterioscler Thromb Vasc Biol. 1999 Jun;19(6):1387-92. doi: 10.1161/01.atv.19.6.1387. PMID: 10364068.'
+
+
+## **Dataset**
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(GGally)
+library(patchwork)
+
+setwd("C:/Users/sonyd/Documents/Proyectos/Statistical Analysis_ANOVA")
+
+df_aorta=read.table('aorta2.txt', header = TRUE)
+
+df_aorta<-df_aorta %>% rename('Id'= X)
+df_aorta<-df_aorta %>% rename_with(str_to_title)
+df_aorta<-df_aorta  %>% rename('Diet'=Dieta, 'Radiation'=Radiacion)
+df_aorta<-df_aorta  %>% rename('Mouse'=Raton)
+
+df_aorta$Diet<-as.factor(df_aorta$Diet)
+df_aorta$Radiation<-as.factor(df_aorta$Radiation)
+df_aorta$Diet<-ifelse(df_aorta$Diet=='estandar',0,1)
+
+df_aorta$Diet=factor(df_aorta$Diet, levels=c(0,1), labels= c('standard','high-fat'))
+df_aorta$Id<-as.factor(df_aorta$Id)
+df_aorta$Mouse<-as.factor(df_aorta$Mouse)
+```
+
+### **Glipse at the dataset (first 5 rows)**
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+head(df_aorta)
+```
+**Table 1:** Preview of the dataset (first 5 rows). Columns correspond to different. Rows correspond to different observations. 
+
+### **Variables:** 
+There are 5 variables in the dataset:
+```{r echo=FALSE}
+colnames(df_aorta)
+```
+### **Variable Description**
+
+- **Area**: Aortic lesioned area measured from cardiac histological samples used as an indicator of vascular damage. A higher area is indicative of higher damage. Units: µm^2. Type of variable: Continuous numeric variable.
+
+- **Diet**: Diet treatment. High-fat or standard diet administered to mice. Type of variable: Categorical variable. Levels: standard and high-fat.
+
+- **Radiation**: Ionizing radiation applied to mice. Type of vaiable: Categorical variable (ordinal). Levels: 0, 4, 8, 12. Units: Gy.
+
+- **Mouse**: Mouse identifier. Levels: 1 to 40. 
+
+- **Id**: Id identifies each histological sample obtained. Two samples (and two area measurements) were obtained for each mice. Levels: 1 to 80. 
+
+### **Variable Summary:**
+```{r,echo=FALSE, results='hide'}
+
+variables<-colnames(df_aorta)
+
+#Id
+class_id<-class(df_aorta$Id)
+levels_id<-paste(unique(df_aorta$Id)[1],tail(unique(df_aorta$Id),1), sep='to')
+type_id<-typeof(df_aorta$Id)
+
+#Mouse
+class_m<-class(df_aorta$Mouse)
+levels_m<-paste(unique(df_aorta$Mouse)[1],tail(unique(df_aorta$Mouse),1), sep='to')
+type_m<-typeof(df_aorta$Mouse)
+
+#Radiation
+class_r<-class(df_aorta$Radiation)
+levels_r<-toString(unique(df_aorta$Radiation))
+type_r<-typeof(df_aorta$Radiation)
+
+#Diet
+class_d<-class(df_aorta$Diet)
+levels_d<-toString(unique(df_aorta$Diet))
+type_d<-typeof(df_aorta$Diet)
+
+#Area
+class_a<-class(df_aorta$Area)
+rango_a<-paste(min(df_aorta$Area),max(df_aorta$Area),sep='-')
+type_a<-typeof(df_aorta$Area)
+
+
+levels<-c(levels_id,levels_m,levels_r,levels_d,rango_a)
+class<-c(class_id,class_m,class_r,class_d,class_a)
+type<-c(type_id, type_m, type_r, type_d, type_a)
+
+#summary table with types of variables and ranges/levels
+tabla<-rbind(class,type, levels)
+colnames(tabla)<-variables
+rownames(tabla)<-c('Type of variable', 'Data type','Levels-Range')
+
+```
+```{r, echo=FALSE}
+tabla<-as.data.frame(tabla)
+tabla
+```
+**Table 2:** Summary of type of variables, type of data and levels (categorical variables) or range (numeric variable).
+
+### **Data Summary**
+```{r echo=FALSE}
+summary(df_aorta)
+```
+**Table 3:** Summary of variables. 
+
+
+
+# **Exploratory Data Analysis (EDA)**
+
+## **Graphical Analysis**
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=7, fig.width=12, fig.align='center'}
+
+my_colors <- c('deeppink4','darkseagreen') 
+my_colors2<-c('turquoise','turquoise2','turquoise3','turquoise4')
+
+ggpairs(df_aorta, #legend=1 # not working after package update
+        lower = list(discrete = "count", combo = "dot_no_facet"),
+        columns=c(3,4,5),
+        #legend=1,
+        aes(color= Radiation), 
+        #upper='blank',
+        title='Data Exploratory Analysis for Variable relationship')+
+  scale_color_manual(values=my_colors2)+ #changing default colors
+  scale_fill_manual(values=my_colors2) + #changing default colors
+  theme(plot.title=element_text(hjust = 0.5))+
+  theme(legend.position = "bottom")
+
+  # + labs(caption='Data Exploratory Analysis between pair of relevant variables')
+
+```
+**Figure 1:** Exploratory Data Analysis between pairs of treatments. Radiation levels are represented with different shades of turquoise. Variables distribution is showed in the diagonal line. Radiation levels: 0, 4, 8 and 12 Gy. Diet levels: 'standard' and 'high-fat'.
+
+
+```{r, echo=FALSE,message=FALSE, warning=FALSE,fig.width=10, fig.align='center'}
+
+resumen<-df_aorta%>% select(Area, Diet, Radiation) %>% group_by(Diet, Radiation) %>%
+  summarise(
+    n=length(Area), 
+    Mean=round(mean(Area),3),
+    SD=round(sd(Area),3),
+    SE=round(sd(Area)/sqrt(length(Area)),3),
+    Var=round(var(Area),3), 
+    Min=round(min(Area),3), 
+    Max=round(max(Area),3))
+
+p1 <- ggplot(resumen, 
+             aes(x=Radiation, y=Mean, colour=Diet, group=Diet))+
+  geom_line(size=1) +
+  geom_point(size=3)+
+  ylab("Average Aortic Area (um^2)")+
+  scale_color_manual(values=my_colors)+ #changing default colors
+  scale_fill_manual(values=my_colors) #changing default colors
+
+#resumen
+p2 <- ggplot(resumen, 
+              aes(x=Diet, y=Mean, colour=Radiation, group=Radiation))+
+  geom_line( size=1) +
+  geom_point(size=3) +
+  ylab("Average Aortic Area (um^2)")+
+  scale_color_manual(values=my_colors2)+ #changing default colors
+  scale_fill_manual(values=my_colors2) #changing default colors
+
+p1 + p2 + plot_annotation('Profiles Plot', theme=theme(plot.title=element_text(hjust=0.5)) )
+```
+**Figure 2:** Profiles Plots. Average Aortic Area is plotted against Radiation (a) or Diet (b).The different slopes of the plotted lines is informative on the potential interaction between the two treatments.
+
+<div style='text-align: justify;'>
+Based on the exploratory graphical analysis a few preliminary observations can be made for the data: 
+- The aortic area is higher for high-fat diet compared with standard diet for all radiation treatments.
+
+- The aortic area increases with higher doses of radiation in mice with high-fat diet. 
+
+- However, there seems to be a smaller effect of radiation on mice on standard diet compared to mice on high-fat diet, suggesting that radiation alone is not relevant for lesioned aortic area, but in combination with high-fat diet.
+
+- Profiles plot indicate a potential interaction between Radiation and Diet since the slope of profiles is different depending of the treatment combination. 
+
+<div>
+
+
+## **Descriptive statistics of Aortic Area per treatment combination**
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+resumen
+```
+**Table 3:** Descriptive statistical summary for the dataset. Area's statistics are evaluated for the different combination of treatments Diet and Radiation. n: sample size for the treatment combination, SD: standard deviation, SE: standard error, Var: Variance, Min: minimum, Max: maximum. 
+
+
+# **Statistical Analysis**
+
+## **Mixed ANOVA model**
+<div style='text-align: justify;'>
+The proposed model is an Anova mixed model with two fixed effects (Diet and Radiation) and one random effect (Mouse) nested in the combination of treatments.
+A term for the interaction between Diet and Radiation was included based on the profiles graphs interpretation.
+<div>
+
+$$
+\mathbf{Y_{ijkl} = \mu  + \alpha_i + \beta_j + \alpha*\beta_{ij} + M_{k(ij)} + \epsilon_{ijkl}}
+$$
+
+
+$$
+\alpha_i = \text{Effect of i-th diet, i=1,2}
+$$
+
+
+$$
+\beta_j= \text{Effect of j-th radiation treatment, j= 1,2,3,4}
+$$
+
+$$
+M_{k(ij)}= \text{Random  effect of k-th n mouse nested in the diet-radiation combination.  } k=1,2,3...40
+$$
+
+$$
+M_{k(ij)} \approx N(0,\sigma_M^2)
+$$
+
+
+$$
+l= \text{histological  sample.  }l=1,2
+$$
+
+
+$$
+\epsilon_{ijkl} = Error \approx N(0,\sigma^2)
+$$
+
+
+## **Mixed ANOVA Results**
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(lme4)
+library(lmerTest) #para obtener los pvalores
+m1= lmer(Area ~ Radiation*Diet +(1|Mouse),df_aorta)
+anova1<-anova(m1)
+anova1
+#summary(m1)
+```
+**Table 4:** Analisis of Variance for mixed effect model.
+
+<div style='text-align: justify;'>
+The results in Table 4 indicate that there is a significant interaction effect between Radiation and Diet (F(3,32)=22.754, p=4.479e-08). Additionally simple main effect for Diet(F(3,32)=56.165, p=7.548e-13) and Radiation (F(1,32)=201.915, p=2.256e-15) are also significant. 
+<div>
+
+## **Model Diagnostics**
+
+<div style='text-align: justify;'>
+The proposed model assumes aproximate normal distribution for errors and random effects. It also implies homocesdasticity of errors. 
+
+<div>
+$$
+\epsilon_{ijkl} \approx N(0,\sigma^2)
+$$
+
+
+$$
+M_{k(ij)} \approx N(0,\sigma_M^2)
+$$
+
+<div style='text-align: justify;'>
+Errors are non observable, but they can be estimated from model residuals. In the following sections evaluation of residuals and random effects will be performed to evaluate the validity of the assumptions for the proposed model. 
+
+<div>
+
+### **Testing Residual Normality**
+
+<div style='text-align: justify;'>
+Residuals were  graphically and statistically evaluated with a Shapiro-Wilks Normality test. 
+<div>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=7, fig.align='center'}
+
+#Evaluación de supuestos del modelo 
+#install.packages('ggplot2')
+library(car)
+
+residuals_m1=rstudent(m1)
+#install.packages('qqplotr')
+library(qqplotr)
+#qqPlot(residuals_m1) #decided to show with ggplot for graph consistency ji
+
+r <- data.frame(res = residuals_m1)
+# Normal Q-Q plot of Normal data
+gg <- ggplot(data = r, mapping = aes(sample = res)) +
+  stat_qq_band() +
+  stat_qq_line() +
+  stat_qq_point()+
+  labs(x = "Residual Quantiles", y = "Sample Quantiles")+
+  scale_fill_manual(values='darkseagreen')
+
+gg
+
+#qqnorm(residuals_m1)
+#qqline(residuals_m1)
+
+
+
+```
+
+**Figure 3:** Quantile-Quantile plot of sample residual quantiles vs normal residual quantiles. line: quantile-quantile trend line for a normal distribution. band: 95% confience band for a normal distribution. 
+
+```{r echo=FALSE}
+shapiro.test(residuals_m1)
+```
+**Table 4:**Shapiro-Wilks normality test for Residuals. 
+
+<div style='text-align: justify;'>
+Table 4 indicates that normality of residuals is not violated. Shapiro-Wilks test (W= 0.98216, p=0.3284)
+
+Residual Quantiles plot in Figure 3 shows one observation outside confidence band for normal quantiles. Further analysis were performed to evaluate if this observation corresponds to an outlier. 
+<div>
+
+### **Testing Homocedasticity of Residuals**
+
+Homocedasticity of Errors was evaluated on residuals graphically and with Levene's Homogeneity of Variance Test.  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=7, fig.align='center'}
+
+
+ggplot(data=df_aorta, aes(x=fitted.values(m1), y=residuals_m1))+
+         geom_point(color='deeppink4')+
+  geom_hline(yintercept = 0) + 
+  labs(y='Sample Residuals', y='Fitted values')
+
+```
+
+**Figure 4:** Plot of Residuals vs Fitted values (Area)
+
+```{r echo=FALSE}
+print(leveneTest(Area~Radiation*Diet, data=df_aorta, center=mean))
+
+```
+**Table 5:** Levene Test of Homogeneity for residual variance. 
+
+<div style='text-align: justify;'>
+Plot for residuals vs Area fitted values does not show any tendency in the distribution of residuals Additionally, Levene's test is non-significant (F(7,72)= 1.046, p=0.407). Results are indicative that Homogeneity of residual variance is not violated.
+<div>
+
+### **Testing Normality of Random Effects**
+<div style='text-align: justify;'>
+Normality of Random Effect, Mouse, was evaluated graphically and statistically with Shapiro-Wilks Normality Test.
+<div>
+
+```{r echo=FALSE, fig.height=5, fig.width=7, fig.align='center'}
+random_effects<-ranef(m1)
+
+#shapiro.test(ranef(m1)$Mouse[,1])
+
+r<-data.frame(ran=ranef(m1)$Mouse[,1])
+
+gg <- ggplot(data = r, mapping = aes(sample = ran), legend=1) +
+  stat_qq_band() +
+  stat_qq_line() +
+  stat_qq_point()+
+  labs(x = "Random Effect Quantiles", y = "Sample Quantiles")+
+  scale_fill_manual(values='darkseagreen')
+
+gg
+#qqPlot(ranef(m1)$Mouse[,1])
+
+```
+
+**Figure 5:** Plot of Random Effect sample quantiles vs Normal Quantiles. line: quantile-quantile normal trend line. band: 95% confidence normal quantile band. 
+```{r echo=FALSE}
+shapiro.test(ranef(m1)$Mouse$'(Intercept')
+```
+**Table 6:** Shapiro-Wilks Test for normality of Random Effects. 
+
+<div style='text-align: justify;'>
+In Figure 5, no sample quantiles fall outside the confidence band for normal distribution. Moreover, Shapiro-Wilks test was non significant (W=0.972, p=0.416). Both results indicate that normality of random effects was not violated. 
+<div>
+
+```{r eval=FALSE, include=FALSE}
+#install.packages('rstatix')
+library(rstatix)
+#ezDesign(df_aorta)
+df<-df_aorta
+m2<-anova_test(data=df,
+               dv=Area,
+               wid = Id,
+               between = c(Radiation, Diet),
+               within= Mouse)
+
+```
+
+```{r eval=FALSE, include=FALSE}
+library(rstatix)
+str(df_aorta)
+df_aorta %>% anova_test(Area ~ Diet*Radiation + Error(Id/Mouse))
+
+```
+
+
+
+### **Analysis of potential outliers**
+
+<div style='text-align: justify;'>
+In Figure 4, quantile-quantile normality plot for studentized residues showed a potential outlier observation (observation number 75) outside normal quantile confidence bands. 
+Outlier t-test was performed on externally studentized residuals and corrected p-values with Bonferroni criteria were reported. 
+
+<div>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+outliers<-outlierTest(m1)
+outliers
+```
+**Table 7:** t-student Outlier Test with Bonferroni p-value adjustment. 
+
+<div style='text-align: justify;'>
+Adjusted p-value for potential outlier observation number 75 showed a non-significant p-value and a statistic absolute value below 3 (rstudent= -2.922, adjusted p= 0.375). Outlier test indicates that there are no outliers present in the dataset. 
+<div>
+
+## **Estimated parameters for the model**
+<div style='text-align: justify;'>
+Variance, Variance between mice, model mean, the fixed effects for each treatment level and treatment interactions estimated by the model, and intraclass correlation coeficient (ICC) are obtained from the following Table.
+
+
+<div>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.align='center'}
+#install.packages('sjPlot')
+library(sjPlot)
+sjPlot::tab_model(m1, show.df = TRUE, show.est = TRUE, show.se = TRUE, string.ci='CI (95%)',
+                  pred.labels = c('0 Gy - Standard', '4 Gy','8 Gy', '12 Gy', 'High-fat', '4 Gy: High-fat', '8 Gy: High-fat', '12 Gy: High-fat'), digits=3, digits.p = 3, digits.re=3)
+```
+
+
+**Table 8:** Summary of Estimated parameters.
+
+
+
+
+The main parameters extracted from the table above expressed in terms of the model can be summarized as follows: 
+
+
+
+$$
+\sigma^2=0.292
+$$
+
+$$
+    \sigma_M=0.671
+$$
+
+$$    
+\mu=1.284
+$$
+$$
+\text{Fixed Effects:  } \alpha_i , \beta_j \text{ and } \alpha*\beta_{ij}:
+$$
+
+
+```{r eval=FALSE, include=FALSE}
+fixed_eff<-data.frame(fixef(m1))
+colnames(fixed_eff)<-c('Effect')
+rownames(fixed_eff)<-c('0 Gy - Standard','4 Gy', '8 Gy', '12 Gy', 'High-Fat', '4 Gy - High Fat','8 Gy - High Fat', '12 Gy - High Fat' )
+round(fixed_eff,3)
+```
+
+
+
+$$ 
+  \begin{align}
+    \text{Random effects } M_{k(ij)} \text { obtained from the model are:} 
+  \end{align}
+$$
+
+```{r echo=FALSE}
+re<-round(ranef(m1)$Mouse[,1],3)
+mouse<-seq(1,40,1)
+re_df<-data.frame(Mouse=mouse, Mouse_Effect=re)
+
+
+re_df
+```
+
+**Table 9:** Model Random Effects.
+
+### **Intraclass Correlation Coeficient (ICC)**
+```{r echo=FALSE}
+#install.packages('insight')
+library(insight)
+ran<-get_variance_random(m1, verbose = TRUE)
+var<-get_variance_residual(m1, verbose = TRUE)
+icc<-ran/(ran+var)
+print(icc)
+```
+<div style='text-align: justify;'>
+
+Based on Intraclass correlation coeficient, 69.7% of random variability of lesioned aortic area it is due to variability between mice.  
+<div>
+
+## **Treatment Means and Comparisons of Treatment combinations**
+### **Treatment Means**
+
+
+```{r echo=FALSE, message=FALSE}
+library(emmeans)
+
+#all tukey comparisons
+comp1<-emmeans(m1,  pairwise ~ Diet*Radiation)
+s<-summary(comp1$contrasts)
+
+tukey<-data.frame(s)
+
+#confidence intervals for means and comparisons
+ci_m<-data.frame(confint(comp1)$emmeans) #means
+ci_c<-data.frame(confint(comp1)$contrasts) #comparisons
+
+#adding significance column to tukey comparisons
+len<-length(tukey$p.value)
+i=1
+vector_s<-c('NA')
+while (i<=len) {
+  if (tukey[i,6] <0.05){
+    vector_s[i]<-c('S') 
+  }
+  else{ vector_s[i]<-c('NS') }
+  i=i+1
+}
+tukey$sig<-vector_s
+
+#presenting confidence intervals for comparisons in a dataframe
+tabla<-cbind(ci_c$contrast,round(confint(comp1$contrasts)$estimate,3), round(ci_c$lower.CL,3), round(ci_c$upper.CL,3), round(tukey$p.value,3), tukey$sig)
+tabla<-as.data.frame(tabla)
+colnames(tabla)<-c('Contrasts', ' Mean diff', 'Lower (95% CI)', 'Upper (95% CI)', 'p', 'S')
+
+
+#presenting confidence intervals for means in a dataframe
+tabla2<-data.frame(ci_m$Diet, ci_m$Radiation, round(ci_m$emmean,3),round(ci_m$SE,3), round(ci_m$lower.CL, 3), round(ci_m$upper.CL,3))
+
+colnames(tabla2)<-c('Diet','Radiation','Mean','SE','Lower (95% CI)', 'Upper (95% CI)')
+
+tabla2
+
+#comp
+
+```
+**Table 10:** Treatment combination means. SE: Standard Error. Lower (95% CI) and Upper (95% CI): Lower and upper limit 95% confidence intervals. 
+
+### **Multiple comparisons**
+<div style='text-align: justify;'>
+Tukey's test multiple comparisons were performed and results are presented in Table .
+<div>
+```{r echo=FALSE}
+#multimple comparisons table with confidence intervals and S
+tabla
+```
+
+**Table 11:** Tukey Multiple contrasts.  Mean diff: mean difference between treatment combinations. Lower (95% CI), Upper (95% CI): upper and lower limit confidence interval (95% confidence). p: p-value. S: significance, NS: non-significant, S: significant based on threshold of 0.05.
+
+### **Simple Main Effects**
+Simple main effects were estimated in the table below per Radiation treatment intensity.
+
+a)
+```{r echo=FALSE}
+#simple effects for Radiation
+
+comp3<-emmeans(m1, pairwise~Diet|Radiation, adjust='Tukey')
+
+#making the table nicer
+tabla3<-as.data.frame(comp3$contrasts)
+tabla3[,c('estimate','SE','t.ratio','p.value')]<-tabla3%>%select(estimate, SE, t.ratio, p.value)%>%round(3)
+
+#adding a Significance column (S, NS)
+len<-length(tabla3$p.value)
+i=1
+vector_s<-c('NA')
+while (i<=len) {
+  if (tabla3[i, 'p.value'] <0.05){
+    vector_s[i]<-c('S') 
+  }
+  else{ vector_s[i]<-c('NS') }
+  i=i+1
+}
+tabla3$S<-vector_s
+names(tabla3)[names(tabla3) == 'p.value']<-'p'
+
+tabla3
+
+
+
+
+```
+
+
+
+b)
+```{r echo=FALSE}
+#simple effects for Diet
+comp4<-emmeans(m1, pairwise~Radiation|Diet, adjust='Tukey')
+
+#making the table nicer
+tabla4<-as.data.frame(comp4$contrasts)
+tabla4[,c('estimate','SE','t.ratio','p.value')]<-tabla4%>%select(estimate, SE, t.ratio, p.value)%>%round(3)
+
+#adding a Significance Column (S, NS)
+len<-length(tabla4$p.value)
+i=1
+vector_s<-c('NA')
+while (i<=len) {
+  if (tabla4[i, 'p.value'] <0.05){
+    vector_s[i]<-c('S') 
+  }
+  else{ vector_s[i]<-c('NS') }
+  i=i+1
+}
+tabla4$S<-vector_s
+names(tabla4)[names(tabla4) == 'p.value']<-'p'
+tabla4
+```
+
+
+**Table 12:** Simple effects on Radiation (a) and on Diet (b). Contrast: Treatment compared per level of radiation (a) or diet (b). Estimate: mean difference between treatment combinations. SE: Standard Error. df: degrees of freedom. t.ratio: statistic. p.value: p-value.
+
+
+
+```{r echo=FALSE, fig.align='center', fig.height=5, fig.width=7}
+df_medias<-data.frame(comp1$emmeans)
+ggplot(df_medias, 
+       aes(x=Radiation,y=emmean, group=Diet, colour=Diet))+
+         geom_point(shape=20,size=4)+
+        geom_errorbar(aes(ymin=lower.CL, ymax=upper.CL), size=0.2)+
+  scale_color_manual(values=my_colors)+ #changing default colors
+  scale_fill_manual(values=my_colors)+ #changing default colors
+  labs(y='Mean Aortic Area (um^2)', y='Radiation (Gy)')+
+  annotate("text",x=c(1,1,2,2,3,3,4,4),y=c(1.9,3.1,2.3,5.4,4,8,4,11.2),label=c("A","A","A","B","A","B","A","B"))
+  
+#ggplot(df_medias, 
+#       aes(x=Diet,y=emmean, group=Radiation, colour=Radiation))+
+#         geom_point(shape=20,size=4)+
+#        geom_errorbar(aes(ymin=lower.CL, ymax=upper.CL), size=0.2)+
+#  scale_color_manual(values=my_colors2)+ #changing default colors
+#  scale_fill_manual(values=my_colors2)+ #changing default colors
+#  labs(y='Mean Aortic Area (um^2)', y='Radiation (Gy)')#+
+  #annotate("text",x=c(1,1,2,2,3,3,4,4),y=c(1.9,3.1,2.3,5.4,4,8,4,11.2),label=c("A","A","A","B","A","B","A","B"))
+
+```
+**Figure 6:** Mean comparison between treatment combinations. A vs B: significant difference between treatment combinations. 
+
+<div style='text-align: justify;'>
+Simple main effects tests indicate that the Area was significantly higher between standard vs high-fat diet for all Radiation (4, 8 and 12 Gy) intensities (p<0.001, p<0.001, p<0.001). In absence of Radiation (0 Gy) there is no significant difference between standard and high-fat diet on aortic area lesion (p = 0.0535). 
+
+Interestingly, for high-fat diet, each increase in radiation intensity resulted in a significantly higher area of lesion compared to the immediate previous radiation intensity (0 Gy vs 4 Gy: p=0.0016 .4 Gy vs 8 Gy: p=0.0003 . 8Gy vs 12 Gy: p<0.001.). In contrast, for standard diet, there was only a significant increase of damaged area between 0 Gy and 8 Gy, and 0 Gy and 12 Gy Radiation levels (p=0.024, p=0.038).
+
+<div>
+
+
+# **Conclusion**
+
+<div style='text-align: justify;'>
+The analysis performed indicates that high-fat or standard diet is not indicative of aortic damage. However, the presence of high-fat diet significantly increases the damage induced by radiation. In standard diet individuals, radiation has damaging effect on the aorta but only on higher intensities of radiation and in lower magnitude compared with high-fat diet mice.
+The results suggest that the fat content on diet could be protective (standard fat diet) or damaging (high-fat diet) of vascular endothelium in patients treated with ionizing radiation. 
+<div>
