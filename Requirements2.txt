@@ -1,0 +1,12 @@
+tidyverse
+ggplot2
+GGally
+patchwork
+lme4
+lmerTest
+car
+qqplotr
+insight
+emmeans
+rstudioapi
+gt

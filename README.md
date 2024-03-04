@@ -1,21 +1,6 @@
 ﻿Effect of Radiation and Diet on Aortic damage
 
 
-Requierments:
-tidyverse
-ggplot2
-GGally
-patchwork
-lme4
-lmerTest
-car
-qqplotr
-sjPlot
-insight
-emmeans
-
-Packages can be downloaded from https://cran.r-project.org/web/packages/
-
 Files: 
 aorta2.txt: Dataset consisting of 5 variables and 80 observations. 
 Aorta.RMD: full R-Markdown code used to perform EDA, Statistical Analysis and Visualizations.
