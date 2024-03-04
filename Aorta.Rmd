@@ -26,6 +26,7 @@ header-includes:
   - \usepackage{amscd}
   - \usepackage{amssymb}
 ---
+
 ```{r eval=FALSE, include=FALSE}
 #CONTROL + SHIFT + k para ve el html
 #toc. tabla de contenido con tres niveles
@@ -36,6 +37,9 @@ header-includes:
 #df_print: cómo puestra lso data frames
 #code_folding puede hacer click para ver lineas de codigo.
 #ctrl alt i: aparece para incluir código
+
+#knitr::purl(input = "Aorta.Rmd", output = "Aorta.R",documentation = 0)
+
 ```
 # **Description of the Dataset and Experiment**
 
